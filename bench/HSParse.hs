@@ -7,8 +7,10 @@
 module Main where
 
 import Control.DeepSeq
+import Language.Haskell.Exts (parseFile, ParseResult(ParseOk))
 import Language.Haskell.Exts.Syntax
 import GHC.Generics
+import Data.Compact
 
 deriving instance Generic Type
 deriving instance NFData Type
@@ -79,4 +81,13 @@ deriving instance NFData ImportSpec
 deriving instance NFData Namespace
 deriving instance NFData CName
 
-main = print "hello"
+main =
+ do putStrLn "Parsing Haskell file:"
+    -- Parse ourselves:
+    ParseOk res <- parseFile "./bench/HSParse.hs"
+    putStrLn $  "Result, if printed is " ++ show(length(show res)) ++ " characters."
+    c <- newCompact (16*1024) res
+    putStrLn "Compacted."
+    let res2 = getCompact c
+    putStrLn $  "Re-printing from compact: " ++ show(length(show res2)) ++ " characters."
+    return ()
