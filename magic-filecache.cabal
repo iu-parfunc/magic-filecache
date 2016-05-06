@@ -1,0 +1,47 @@
+name:                magic-filecache
+version:             0.1.0.0
+
+-- synopsis:            Initial project template from stack
+-- description:         Please see README.md
+homepage:            https://github.com/iu-parfunc/magic-filecache#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Ryan Newton
+maintainer:          rrnewton@gmail.com
+copyright:           2016 Ryan Newton
+category:            System
+build-type:          Simple
+-- extra-source-files:
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     System.MagicFileCache
+  build-depends:       base >= 4.7
+                     , deepseq, bytestring, directory,
+                       compact
+  default-language:    Haskell2010
+
+benchmark magic-filecache-bench-hi-load
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Main.hs
+  build-depends:       base
+                     , ghc, ghc-paths
+                     , magic-filecache
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+  
+-- test-suite simple-library-test
+--   type:                exitcode-stdio-1.0
+--   hs-source-dirs:      test
+--   main-is:             Spec.hs
+--   build-depends:       base
+--                      , simple-library
+--   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+--   default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/iu-parfunc/magic-filecache
