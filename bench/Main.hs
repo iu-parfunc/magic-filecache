@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 -- | This benchmark loads an interface file using the GHC API.
 
 module Main where
@@ -17,6 +19,21 @@ import ErrUtils
 import Outputable
 import HscMain (newHscEnv)
 
+import Control.DeepSeq
+import Data.Compact as C
+
+-- Ugh:
+instance NFData ModIface where
+  rnf ifc = ()
+    -- HACK: Super inefficient:
+--    seq (length (show (pprModIface ifc))) ()
+
+  -- rnf ModIface{..} =
+  --   rnf mi_module `seq`
+  --   ()
+
+-- instance NFData Module where
+-- FINISHME:
 
 showIface :: HscEnv -> FilePath -> IO ()
 showIface hsc_env filename = do
@@ -28,9 +45,13 @@ showIface hsc_env filename = do
    -- let sdoc = (pprModIface iface) a
    -- log_action dflags dflags NoReason SevDump noSrcSpan defaultDumpStyle (pprModIface iface)
    -- writeBinIface :: DynFlags -> FilePath -> ModIface -> IO ()
-   -- writeBinIface dflags "./out.hi" iface
-   putStrLn "IFACE LOADED!  And written again."
 
+   -- LAME way to try for NF.  NOPE, doesn't work.
+   writeBinIface dflags "./out.hi" iface
+   putStrLn "IFACE LOADED!"
+   c <- newCompact 4096 iface
+
+   return ()
    -- writeBinIface :: DynFlags -> FilePath -> ModIface -> IO ()
 
 showIface2 :: FilePath -> IO ()
