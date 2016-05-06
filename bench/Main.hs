@@ -43,16 +43,19 @@ showIface hsc_env filename = do
        readBinIface IgnoreHiWay TraceBinIFaceReading filename
    let dflags = hsc_dflags hsc_env
    -- let sdoc = (pprModIface iface) a
-   -- log_action dflags dflags NoReason SevDump noSrcSpan defaultDumpStyle (pprModIface iface)
    -- writeBinIface :: DynFlags -> FilePath -> ModIface -> IO ()
 
    -- LAME way to try for NF.  NOPE, doesn't work.
    writeBinIface dflags "./out.hi" iface
+   -- Can we dump this to a file at least?
+   log_action dflags dflags NoReason SevDump noSrcSpan defaultDumpStyle (pprModIface iface)
+
+   print (pprModIface iface)
+
    putStrLn "IFACE LOADED!"
    c <- newCompact 4096 iface
 
    return ()
-   -- writeBinIface :: DynFlags -> FilePath -> ModIface -> IO ()
 
 showIface2 :: FilePath -> IO ()
 showIface2 p =
@@ -64,6 +67,9 @@ showIface2 p =
                         showIface he p
 
 
+foo :: Int -> Int
+foo = (+ 1)
+
 -- This file is 600K.  It takes 1.4 MB to pretty-print to a file.
 main = do args <- getArgs
           let file = case args of
@@ -71,4 +77,6 @@ main = do args <- getArgs
                       [] -> "./Big.hi"
           putStrLn$ "Loading file: "++file
           showIface2 file
+-- This gets a runtime error!!  Oh no, that's a hole/bug:
+--          c <- newCompact 4096 foo 
           putStrLn "Done."
