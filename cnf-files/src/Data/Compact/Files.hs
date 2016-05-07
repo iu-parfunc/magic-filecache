@@ -8,7 +8,9 @@
 
 -- | Benchamrk script: no criterion.  One measurement per process run.
 
-module Main where
+module Data.Compact.Files
+       (unsafeMapCompactFile, writeCompactFile)
+       where
 import Control.Monad
 import Control.DeepSeq
 import Control.Exception
@@ -36,13 +38,12 @@ import qualified Numeric
 
 import System.Posix (closeFd, openFd, defaultFileFlags, OpenMode(ReadOnly))
 
-import           BenchUtils
-import           BenchUtils.Types
+-- import           BenchUtils
+-- import           BenchUtils.Types
 import qualified Data.Compact as C
 import           Data.Compact (Compact)
+import qualified Data.Compact.Serialized as C
 
-
-import qualified CircSim
 
 -- data SerializedCompact a = SerializedCompact {
 --   serializedCompactGetBlockList :: [(Ptr a, Word)],
@@ -61,17 +62,15 @@ instance Read (Ptr a) where
           _ -> error $ "Could not read string as hex: "++show s
       _ -> error $ "Could not read string as hex: "++show s
 
-instance NFData CircSim.Boolean where
-  rnf CircSim.T = ()
-  rnf CircSim.F = ()
 
 --------------------------------------------------------------------------------
 -- Main script
 --------------------------------------------------------------------------------
 
-dbgPrint _ = return ()
--- dbgPrint = hPutStrLn stderr
+-- dbgPrint _ = return ()
+dbgPrint = hPutStrLn stderr
 
+{-
 main :: IO ()
 main = do
   opts@Options{mode,act,tweetMBs} <- execParser cmdOpts
@@ -155,27 +154,11 @@ main = do
       performGC
       timeit $ evaluate $ force $ CircSim.run 8 5000
       afterBackgroundData (fst tweets ++ snd tweets)
+-}
+
 --------------------------------------------------------------------------------
 -- Utils
 --------------------------------------------------------------------------------
-
-{-# NOINLINE afterBackgroundData #-}
-afterBackgroundData :: [TweetMetaData] -> IO ()
-afterBackgroundData ls =
-  putStrLn $ show (length ls)
-
-
-countCats :: [TweetMetaData] -> Int
-countCats ls = loop ls 0
-  where
-    loop [] !acc = acc
-    loop (TweetMetaData{hashtags}:rst) !acc
-      | hasCat hashtags = loop rst (acc+1)
-      | otherwise       = loop rst acc
-    hasCat []        = False
-    hasCat (a:rst)
-      | a == "cat"   = True
-      | otherwise    = hasCat rst
 
 timeit :: IO a -> IO a
 timeit act = do
@@ -199,13 +182,13 @@ doesCompactPkgExist p = do
   doesFileExist (p </> contentsFile)
   -- TODO, check for proper collection of files in there.
 
-writeCompactPkg :: forall a . (Typeable a, NFData a)
+writeCompactFile :: forall a . (Typeable a, NFData a)
                    => FilePath -> Compact a -> IO ()
-writeCompactPkg pth cmp = do
+writeCompactFile pth cmp = do
   b <- doesDirectoryExist pth
   when b $ removeDirectoryRecursive pth
   createDirectoryIfMissing True pth
-  C.withCompactPtrs cmp $ \ ser@(C.SerializedCompact chunks root) -> do 
+  C.withSerializedCompact cmp $ \ ser@(C.SerializedCompact chunks root) -> do 
     dbgPrint $ " [writeCompactPkgs] Writing out compact to location "
               ++show pth++" with #chunks = "++show (length chunks)
 
@@ -224,19 +207,26 @@ contentsFile = "contents.txt"
 chunkpath :: FilePath -> Ptr a -> String
 chunkpath pth ptr = pth </> (show ptr) <.> "bin"
 
-loadCompactPkg :: forall a . NFData a
+-- | Map a file containing a CNF into memory.
+--   WARNING: This operation has ZERO type checking, so you must
+--   be absolutely sure that the file really contains a CNF of the
+--   right type, written by the same version of GHC.
+--
+--   Future versions must improve on this by using fingerprints and
+--   typerep checking.
+unsafeMapCompactFile :: forall a . NFData a
                   => FilePath -> IO (Compact a)
-loadCompactPkg pth = do
-  hPutStrLn stderr $ " [loadCompactPkg] Mapping compact into memory from: "++pth
+unsafeMapCompactFile pth = do
+  dbgPrint $ " [loadCompactPkg] Mapping compact into memory from: "++pth
   (ser::C.SerializedCompact a) <- fmap read $ readFile (pth </> contentsFile)
-  hPutStrLn stderr $ " [loadCompactPkg] Retrieved SerializedCompact:\n   "++take 100 (show ser)++"..."
+  dbgPrint $ " [loadCompactPkg] Retrieved SerializedCompact:\n   "++take 100 (show ser)++"..."
 
-  let addrs1  = map fst (C.serializedCompactGetBlockList ser)
+  let addrs1  = map fst (C.serializedCompactBlockList ser)
       addrSet = S.fromList addrs1
 
   dbgPrint $ " [loadCompactPkg] Stored SerializedCompact has this many addresses: "++show (length addrs1)
 
-  x <- C.compactImportTrusted ser $ \ dest len -> do
+  x <- C.importCompact ser $ \ dest len -> do
     dbgPrint $ " compactImportTrusted provided addr "++show dest++
       ", is it in the set we expected? "++show (S.member dest addrSet)
     fd <- openFd (chunkpath pth dest) ReadOnly Nothing defaultFileFlags
@@ -245,11 +235,11 @@ loadCompactPkg pth = do
     let loc2 = castPtr loc
     dbgPrint $ " [loadCompactPkg] performed mmap, got : "++show loc
     when (loc2 /= dest) $ do
-       hPutStrLn stderr $ " [loadCompactPkg] File landed in memory, but not in the right place.. memcpy time."
+       dbgPrint $ " [loadCompactPkg] File landed in memory, but not in the right place.. memcpy time."
        copyBytes dest loc2 (fromIntegral len)
-       hPutStrLn stderr $ " [loadCompactPkg] Done memcpy"
+       dbgPrint $ " [loadCompactPkg] Done memcpy"
        c_munmap loc (fromIntegral len)
-       hPutStrLn stderr $ " [loadCompactPkg] out-of-place region unmapped"
+       dbgPrint $ " [loadCompactPkg] out-of-place region unmapped"
 
     closeFd fd -- Ok to close, mapping persists.
   case x of
@@ -262,44 +252,3 @@ foreign import ccall unsafe "hs_bytestring_mmap.h munmap"
     c_munmap :: Ptr Word8 -> CSize -> IO CInt
 
 --------------------------------------------------------------------------------
---  Arg parsing:
---------------------------------------------------------------------------------
-
-
-data Mode     = Aeson
-              | Compact
-              | None deriving (Show,Read,Eq,Ord,Enum,Bounded)
- 
-data Action   = -- LoadAll     -- ^ load all tweets in memory and stop.
-                ReadRandom  -- ^ Read one tweet from the middle
-                -- { howMany :: Int } -- ^ read N tweets at (uniform) random
-              | SearchAll   -- ^ read all tweets and count a hash tag
-              | BackgroundData -- ^ load tweets in memory and go on to do something else
-  deriving (Show,Read,Eq,Ord)
-
-data Options = Options
-               { mode       :: Mode
-               , act        :: Action
-               , tweetMBs   :: Int
-                 -- ^ Powers of two up to 1024...
-               }
-  deriving (Show,Read,Eq,Ord)
-
-cmdOpts :: ParserInfo Options
-cmdOpts = info (helper <*> argParser)
-          ( fullDesc
-            <> progDesc ("Run data loading benchmark.")
-          )
-
-argParser :: Parser Options
-argParser = Options <$>
---  argument auto (help "can be 'Lists' or 'Sets'" <> metavar "<datatype>") <*>
-  option  auto (long "mode" <> short 'm' <>
-                metavar "<mode>" <>
-                help ("'Aeson' or 'Compact'")) <*>
-  option auto (long "action" <> short 'a' <>
-               metavar "<act>" <>
-               help "can be LoadAll, SeachAll, or 'ReadRandom <N>'") <*>  
-  -- argument auto (help ("'Aeson' or 'Compact'") <> metavar "<mode>") <*>
-  -- argument auto (help "can be LoadAll, SeachAll, or 'ReadRandom <N>'" <> metavar "<act>") <*>  
-  argument auto (help "number of MBs of tweets 2^0..2^10" <> metavar "<numTweetMB>") 
