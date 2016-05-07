@@ -18,7 +18,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     System.MagicFileCache
   build-depends:       base >= 4.7
-                     , deepseq, bytestring, directory
+                     , deepseq, bytestring, directory, random
                      , compact, filepath
   default-language:    Haskell2010
 

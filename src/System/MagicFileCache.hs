@@ -12,6 +12,8 @@ import Data.ByteString.Lazy as B
 import System.IO.Unsafe
 import System.Directory
 import System.FilePath
+import System.Random
+import Data.Word
 
 -- loadFile :: NFData a => FilePath -> IO a -> IO (Compact a)
 
@@ -40,8 +42,13 @@ loadFile fn =
 loadAction :: NFData a => (FilePath -> IO a) -> FilePath -> IO (Compact a)
 loadAction act pth =
  do canon <- canonicalizePath pth
-    let cache = cachedir </> canon
-    error$ "FINISHME: load cache file: "++show cache
+    relcanon <- withCurrentDirectory "/" $
+                 makeRelativeToCurrentDirectory canon
+    let cache = cachedir </> relcanon
+    b <- doesFileExist cache
+    uid <- randomIO :: IO Word64
+    let temploc = cache ++ "_"++show uid    
+    error$ "FINISHME: load cache file: "++show cache++" exists "++show b
 
 -- TODO: ^^ various levels of safety checking or fingerprinting can be
 -- considered to control the update-detection algorithm.
