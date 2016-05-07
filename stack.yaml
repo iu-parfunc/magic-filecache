@@ -48,7 +48,43 @@ extra-deps:
 - old-time-1.1.0.3
 - polyparse-1.12
 - text-1.2.2.1
-
+# All for criterion:
+- criterion-1.1.1.0
+- Glob-0.7.5
+- aeson-0.11.1.4
+- ansi-wl-pprint-0.6.7.3
+- cassava-0.4.5.0
+- hastache-0.6.1
+- mtl-2.2.1
+- mwc-random-0.13.4.0
+- optparse-applicative-0.12.1.0
+- parsec-3.1.9
+- statistics-0.13.2.3
+- transformers-compat-0.5.1.4
+- vector-0.11.0.0
+- vector-algorithms-0.7.0.1
+- ansi-terminal-0.6.2.3
+- attoparsec-0.13.0.1
+- blaze-builder-0.4.0.2
+- dlist-0.7.1.2
+- erf-2.0.0.0
+- fail-4.9.0.0
+- hashable-1.2.4.0
+- ieee754-0.7.8
+- math-functions-0.1.5.2
+- monad-par-0.3.4.7
+- scientific-0.3.4.6
+- syb-0.6
+- tagged-0.8.3
+- unordered-containers-0.2.7.0
+- vector-binary-instances-0.2.3.1
+- abstract-deque-0.3
+- abstract-par-0.3.3
+- monad-par-extras-0.3.3
+- parallel-3.2.1.0
+- vector-th-unbox-0.2.1.5
+- cereal-0.5.1.0
+- random-1.1
 
 # Override default flag values for local packages and extra-deps
 flags: {}

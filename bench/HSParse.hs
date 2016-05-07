@@ -11,6 +11,10 @@ import Language.Haskell.Exts (parseFile, ParseResult(ParseOk))
 import Language.Haskell.Exts.Syntax
 import GHC.Generics
 import Data.Compact
+import System.MagicFileCache
+
+import Control.Exception
+import Criterion.Main
 
 deriving instance Generic Type
 deriving instance NFData Type
@@ -81,7 +85,8 @@ deriving instance NFData ImportSpec
 deriving instance NFData Namespace
 deriving instance NFData CName
 
-main =
+test :: IO ()
+test =
  do putStrLn "Parsing Haskell file:"
     -- Parse ourselves:
     ParseOk res <- parseFile "./bench/HSParse.hs"
@@ -91,3 +96,15 @@ main =
     let res2 = getCompact c
     putStrLn $  "Re-printing from compact: " ++ show(length(show res2)) ++ " characters."
     return ()
+
+
+doParse :: FilePath -> IO Module
+doParse f = do ParseOk res <- parseFile f
+               return res
+
+main =
+ do let file = "./bench/HSParse.hs"
+    defaultMain
+     [ bench "parseFile"    $ nfIO   $ doParse file
+     , bench "CNF.loadFile" $ whnfIO $ loadAction doParse file
+     ]
