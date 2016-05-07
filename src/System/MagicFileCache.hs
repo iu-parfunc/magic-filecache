@@ -63,6 +63,7 @@ loadWAction act pth =
       -- TODO: Can optionally fork process here:
       res <- act pth
       -- When we're writing to disk it's worth it to preserve sharing!
+      -- As an example, parsed Haskell files are 3X bigger with no sharing:
       c <- newCompact (32*1024) res
       writeCompactFile temploc c
 -- !!!TODO!!! -- implement time stamp checking"

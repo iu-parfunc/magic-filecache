@@ -8,13 +8,14 @@ module Main where
 
 import Control.DeepSeq
 import Language.Haskell.Exts (parseFile, ParseResult(ParseOk))
-import Language.Haskell.Exts.Syntax
 import GHC.Generics
 import Data.Compact
 import System.MagicFileCache
 
 import Control.Exception
 import Criterion.Main
+
+import Language.Haskell.Exts.Syntax
 
 deriving instance Generic Type
 deriving instance NFData Type

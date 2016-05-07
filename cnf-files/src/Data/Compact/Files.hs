@@ -122,7 +122,7 @@ unsafeMapCompactFile pth = do
   dbgPrint $ " [unsafeMapCompactFile] Stored SerializedCompact has this many addresses: "++show (length addrs1)
 
   x <- C.importCompact ser $ \ dest len -> do
-    dbgPrint $ " compactImportTrusted provided addr "++show dest++
+    dbgPrint $ " importCompact provided addr "++show dest++
       ", is it in the set we expected? "++show (S.member dest addrSet)
     fd <- openFd (chunkpath pth dest) ReadOnly Nothing defaultFileFlags
     dbgPrint $ " Got file descriptor successfully... "
