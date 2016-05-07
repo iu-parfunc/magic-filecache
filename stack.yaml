@@ -113,12 +113,14 @@ extra-package-dbs: []
 # Extra directories used by stack for building
 # extra-include-dirs: [/path/to/dir]
 # extra-lib-dirs: [/path/to/dir]
-# 
-# Allow a newer minor version of GHC than the snapshot specifies
-# compiler-check: newer-minor
+
 
 # GHC mutable CNF:
 compiler-check: newer-minor
 resolver: ghc-8.1
 
 allow-newer: true
+
+docker:
+  auto-pull: true
+  repo: vikraman/ghc-mutable-cnf:0.3
