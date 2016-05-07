@@ -2,7 +2,7 @@
 
 module System.MagicFileCache
     ( loadFile
-    , loadAction
+    , loadWAction
     ) where
 
 
@@ -11,6 +11,7 @@ import Control.Exception
 import Data.Compact
 import Data.ByteString.Lazy as B
 import System.IO.Unsafe
+import System.IO
 import System.Directory
 import System.FilePath
 import System.Random
@@ -37,29 +38,32 @@ cachedir = unsafePerformIO $ getAppUserDataDirectory "magic-cache"
 loadFile :: (Typeable a, NFData a)
          => (ByteString -> a) -> FilePath -> IO (Compact a)
 loadFile fn =
- loadAction (\p -> do bs <- B.readFile p 
-                      return $ fn bs)
+ loadWAction (\p -> do bs <- B.readFile p 
+                       return $ fn bs)
 
 -- | Some library functions load a file directly, and cannot work from
 -- a ByteString.  Memoize such a load action.
 --
--- `loadFile` can easily be written in terms of `loadAction`.
-loadAction :: (Typeable a, NFData a)
+-- `loadFile` can easily be written in terms of `loadWAction`.
+loadWAction :: (Typeable a, NFData a)
            => (FilePath -> IO a) -> FilePath -> IO (Compact a)
-loadAction act pth =
+loadWAction act pth =
  do canon <- canonicalizePath pth
     relcanon <- withCurrentDirectory "/" $
                  makeRelativeToCurrentDirectory canon
     let cache = cachedir </> relcanon <.> "cnf"
-    b <- doesFileExist cache
+    -- b <- doesFileExist cache -- for now they are directories!
+    b <- doesDirectoryExist cache
     if b then do
       unsafeMapCompactFile cache
-     else do      
+     else do
+      hPutStrLn stderr $ "loadWAction: no cache found for "++pth++".  Populating..."
       uid <- randomIO :: IO Word64
       let temploc = cache ++ "_"++show uid
       -- TODO: Can optionally fork process here:
       res <- act pth
-      c <- newCompactNoShare (32*1024) res
+      -- When we're writing to disk it's worth it to preserve sharing!
+      c <- newCompact (32*1024) res
       writeCompactFile temploc c
 -- !!!TODO!!! -- implement time stamp checking"
 
@@ -72,7 +76,7 @@ loadAction act pth =
             -- This is best-effort, ignore any problems:
             (\(e::SomeException) ->
               -- This is lame, and doesn't seem to match System.Directory description.
-              do P.putStrLn $ "TEMPDBG: Exception caught during rename: "++ show e
+              do -- P.putStrLn $ "TEMPDBG: Exception caught during rename: "++ show e
                  tryNoFail $ removeDirectoryRecursive temploc
                  return ())
       return c

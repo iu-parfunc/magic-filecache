@@ -105,11 +105,15 @@ doParse f = do ParseOk res <- parseFile f
 _main =
  do let file = "./bench/HSParse.hs"
     defaultMain
-     [ bench "parseFile"    $ nfIO   $ doParse file
-     , bench "CNF.loadFile" $ whnfIO $ loadAction doParse file
+     [ bench "parseFile"    $ nfIO   $ doParse             file -- >>= evaluate . rnf
+     , bench "CNF.loadFile" $ whnfIO $ loadWAction doParse file -- >>= secondPass             
      ]
+
+-- Do a second, pointless pass to force all the pages to be loaded
+-- from disk:
+secondPass x = evaluate (rnf (getCompact x))
 
 main =
  do print "Loading file..."
-    loadAction doParse "./bench/HSParse.hs"
+    loadWAction doParse "./bench/HSParse.hs"
     print "DONE Loading"

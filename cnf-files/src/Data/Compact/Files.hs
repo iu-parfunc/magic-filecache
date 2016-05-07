@@ -63,8 +63,8 @@ instance Read (Ptr a) where
       _ -> error $ "Could not read string as hex: "++show s
 
 
-dbgPrint _ = return ()
--- dbgPrint = hPutStrLn stderr
+-- dbgPrint _ = return ()
+dbgPrint = hPutStrLn stderr
 
 ----------------------------------------
 -- Compact Disk serialization
@@ -84,7 +84,7 @@ writeCompactFile pth cmp = do
   when b $ removeDirectoryRecursive pth
   createDirectoryIfMissing True pth
   C.withSerializedCompact cmp $ \ ser@(C.SerializedCompact chunks root) -> do 
-    dbgPrint $ " [writeCompactPkgs] Writing out compact to location "
+    dbgPrint $ " [writeCompactFile] Writing out compact to location "
               ++show pth++" with #chunks = "++show (length chunks)
 
     forM_ chunks $ \ (ptr, len) -> do
@@ -94,7 +94,7 @@ writeCompactFile pth cmp = do
 
     writeFile (pth </> "type.txt") (show (typeOf (undefined::a)))
     writeFile (pth </> contentsFile) (show ser)
-    dbgPrint $ " [writeCompactPkgs] Succesfully wrote "++(pth </> contentsFile)
+    dbgPrint $ " [writeCompactFile] Succesfully wrote "++(pth </> contentsFile)
   
 contentsFile :: FilePath
 contentsFile = "contents.txt"
@@ -112,14 +112,14 @@ chunkpath pth ptr = pth </> (show ptr) <.> "bin"
 unsafeMapCompactFile :: forall a . NFData a
                   => FilePath -> IO (Compact a)
 unsafeMapCompactFile pth = do
-  dbgPrint $ " [loadCompactPkg] Mapping compact into memory from: "++pth
+  dbgPrint $ " [unsafeMapCompactFile] Mapping compact into memory from: "++pth
   (ser::C.SerializedCompact a) <- fmap read $ readFile (pth </> contentsFile)
-  dbgPrint $ " [loadCompactPkg] Retrieved SerializedCompact:\n   "++take 100 (show ser)++"..."
+  dbgPrint $ " [unsafeMapCompactFile] Retrieved SerializedCompact:\n   "++take 100 (show ser)++"..."
 
   let addrs1  = map fst (C.serializedCompactBlockList ser)
       addrSet = S.fromList addrs1
 
-  dbgPrint $ " [loadCompactPkg] Stored SerializedCompact has this many addresses: "++show (length addrs1)
+  dbgPrint $ " [unsafeMapCompactFile] Stored SerializedCompact has this many addresses: "++show (length addrs1)
 
   x <- C.importCompact ser $ \ dest len -> do
     dbgPrint $ " compactImportTrusted provided addr "++show dest++
@@ -128,13 +128,13 @@ unsafeMapCompactFile pth = do
     dbgPrint $ " Got file descriptor successfully... "
     loc <- c_mmap_at dest (fromIntegral len) (fromIntegral fd)
     let loc2 = castPtr loc
-    dbgPrint $ " [loadCompactPkg] performed mmap, got : "++show loc
+    dbgPrint $ " [unsafeMapCompactFile] performed mmap, got : "++show loc
     when (loc2 /= dest) $ do
-       dbgPrint $ " [loadCompactPkg] File landed in memory, but not in the right place.. memcpy time."
+       dbgPrint $ " [unsafeMapCompactFile] File landed in memory, but not in the right place.. memcpy time."
        copyBytes dest loc2 (fromIntegral len)
-       dbgPrint $ " [loadCompactPkg] Done memcpy"
+       dbgPrint $ " [unsafeMapCompactFile] Done memcpy"
        c_munmap loc (fromIntegral len)
-       dbgPrint $ " [loadCompactPkg] out-of-place region unmapped"
+       dbgPrint $ " [unsafeMapCompactFile] out-of-place region unmapped"
 
     closeFd fd -- Ok to close, mapping persists.
   case x of
