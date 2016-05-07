@@ -102,9 +102,14 @@ doParse :: FilePath -> IO Module
 doParse f = do ParseOk res <- parseFile f
                return res
 
-main =
+_main =
  do let file = "./bench/HSParse.hs"
     defaultMain
      [ bench "parseFile"    $ nfIO   $ doParse file
      , bench "CNF.loadFile" $ whnfIO $ loadAction doParse file
      ]
+
+main =
+ do print "Loading file..."
+    loadAction doParse "./bench/HSParse.hs"
+    print "DONE Loading"

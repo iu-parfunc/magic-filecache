@@ -117,3 +117,5 @@ extra-package-dbs: []
 # GHC mutable CNF:
 compiler-check: newer-minor
 resolver: ghc-8.1
+
+allow-newer: true
