@@ -63,113 +63,8 @@ instance Read (Ptr a) where
       _ -> error $ "Could not read string as hex: "++show s
 
 
---------------------------------------------------------------------------------
--- Main script
---------------------------------------------------------------------------------
-
--- dbgPrint _ = return ()
-dbgPrint = hPutStrLn stderr
-
-{-
-main :: IO ()
-main = do
-  opts@Options{mode,act,tweetMBs} <- execParser cmdOpts
-
-  putStrLn$ "Running with options: "++show opts
-  -- Load a gigabyte of data:
---  Just ls <- getConstTwitterData 1024
-
-  rootDir <- getTemporaryDirectory
-
-  let approxLen = tweetMBs * 9091
-      approxMiddle = approxLen `quot` 2
-
-  let compactPath = rootDir++"/stored_compacts/twitter_"++show tweetMBs++"MB.compact"
-      checkExists = do
-         b <- doesCompactPkgExist compactPath
-         unless b $ do putStrLn $ "Compacted twitter data doesn't exist, generating: "++compactPath
-                       Just ls <- getConstTwitterData tweetMBs
-                       putStrLn $ "Got lazy list, now forcing and compacting:"
-                       timeit $ evaluate (rnf ls)
-                       len <- evaluate (length ls)
-                       putStrLn $ "Storing "++show len++" distinct tweets..."
-                       cmp <- timeit $ C.compactNewNoShare (10^6)
-#ifdef USE_ARRAY                       
-                            --  (V.fromList ls)
-                              --  As of depth 42823 we get an error on this ^^
-                              -- " Invalid non-NFData closure in Compact"
-                              (A.listArray (0, len - 1) ls)
-                              -- Different error here ^^
-                              --   "Claimed but not updated BLACKHOLE in Compact"
-#else                              
-                              -- Store a tuple so we can access the middle:
---                              (splitAt (len `quot` 2) ls)
-                              (splitAt approxMiddle ls)
-#endif
-                       putStrLn $ "Compaction finished"
-                       timeit $ writeCompactPkg compactPath cmp
-
-                       error "TODO: unload from memory so we can reload..."
-
-  ------------------------------------------------------------  
-  case (mode,act) of
-    (None,BackgroundData) -> timeit$ do
-      evaluate $ force $ CircSim.run 8 5000
-      return ()
-
-    (Aeson,SearchAll) -> timeit$
-                       do Just ls <- getConstTwitterData tweetMBs
-                          putStrLn $ "Cats: "++ show (countCats ls)
-    (Aeson,ReadRandom) -> timeit$
-                       do Just ls <- getConstTwitterData tweetMBs
-                          putStrLn $ "Tweet in middle (pos "++ show approxMiddle++"): "
-                                      ++ show (ls!!approxMiddle)
-    (Aeson,BackgroundData) -> do
-      Just ls <- getConstTwitterData tweetMBs
-      putStrLn $ "Cats: "++ show (countCats ls)
-      performGC
-      timeit $ evaluate $ force $ CircSim.run 8 5000
-      afterBackgroundData ls
-
-    (Compact,SearchAll) -> do
-      checkExists
-      timeit $ do 
-           cmp <- loadCompactPkg compactPath :: IO (Compact ([TweetMetaData],[TweetMetaData]))
-           putStrLn $ "Victory!  Got the compact, type: "++show (typeOf (C.compactGetRoot cmp))
-           let tweets = C.compactGetRoot cmp
-           putStrLn $ "Cats: "++ show (countCats (fst tweets) + countCats (snd tweets))
-
-    (Compact,ReadRandom) -> do
-      checkExists
-      timeit$ do
-           cmp <- loadCompactPkg compactPath :: IO (Compact ([TweetMetaData],[TweetMetaData]))
-           let tweets = C.compactGetRoot cmp
-           putStrLn $ "Tweet in middle (pos "++ show approxMiddle++"): "++ show (head $ snd tweets)
-
-    (Compact,BackgroundData) -> do
-      checkExists
-      cmp <- loadCompactPkg compactPath :: IO (Compact ([TweetMetaData],[TweetMetaData]))
-      let tweets = C.compactGetRoot cmp
-      putStrLn $ "Cats: "++ show (countCats (fst tweets) + countCats (snd tweets))
-      performGC
-      timeit $ evaluate $ force $ CircSim.run 8 5000
-      afterBackgroundData (fst tweets ++ snd tweets)
--}
-
---------------------------------------------------------------------------------
--- Utils
---------------------------------------------------------------------------------
-
-timeit :: IO a -> IO a
-timeit act = do
-  st <- getCurrentTime
-  x <- act
-  en <- getCurrentTime
-  putStrLn $ "SELFTIMED: "++show (diffUTCTime en st)
-  stats <- getGCStats
-  putStrLn $ "BYTES_ALLOCATED: "++show (bytesAllocated stats)
-  putStrLn $ "GC_WALL_SECONDS: "++show (gcWallSeconds stats)
-  return x
+dbgPrint _ = return ()
+-- dbgPrint = hPutStrLn stderr
 
 ----------------------------------------
 -- Compact Disk serialization
@@ -199,7 +94,7 @@ writeCompactFile pth cmp = do
 
     writeFile (pth </> "type.txt") (show (typeOf (undefined::a)))
     writeFile (pth </> contentsFile) (show ser)
-    hPutStrLn stderr $ " [writeCompactPkgs] Succesfully wrote "++(pth </> contentsFile)
+    dbgPrint $ " [writeCompactPkgs] Succesfully wrote "++(pth </> contentsFile)
   
 contentsFile :: FilePath
 contentsFile = "contents.txt"

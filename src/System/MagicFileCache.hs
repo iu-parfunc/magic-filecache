@@ -61,9 +61,8 @@ loadAction act pth =
       res <- act pth
       c <- newCompactNoShare (32*1024) res
       writeCompactFile temploc c
-      P.putStrLn$  "TEMPDBG: done writing compact file: "++temploc
-      P.putStrLn$  "TEMPDBG: Now rename to "++cache
-      P.putStrLn$  "TEMPDBG: TODO - implement time stamp checking"
+-- !!!TODO!!! -- implement time stamp checking"
+
       -- There should be a more elegant way to do this:
       b1 <- doesFileExist temploc
       catch (-- Benign race to do the rename:
@@ -72,6 +71,7 @@ loadAction act pth =
                else renameDirectory temploc cache)
             -- This is best-effort, ignore any problems:
             (\(e::SomeException) ->
+              -- This is lame, and doesn't seem to match System.Directory description.
               do P.putStrLn $ "TEMPDBG: Exception caught during rename: "++ show e
                  tryNoFail $ removeDirectoryRecursive temploc
                  return ())
